@@ -19,7 +19,7 @@ namespace SolitaireSolver
         GraphicBuffer gBuffer;
         readonly object mutex = new object();
 
-        public FrmSolitaire()
+        public FrmSolitaire(BlockConfiguration blockConfiguration)
         {
             InitializeComponent();
             
@@ -28,7 +28,7 @@ namespace SolitaireSolver
             var detector = new ImageDetector(yoloWrapper);
 
             gBuffer = new GraphicBuffer(pnlGraphics);
-            WebcamSource source = new WebcamSource(gBuffer);
+            WebcamSource source = new WebcamSource(gBuffer, blockConfiguration);
 
             Brush redBrush = new SolidBrush(Color.Red);
             Brush greenBrush = new SolidBrush(Color.Green);
@@ -51,25 +51,21 @@ namespace SolitaireSolver
                         lock (mutex)
                         {
                             sourceCopy = (Image)lastSource.Clone();
-                            if (regions == default) regions = GenerateRegions(sourceCopy);
+                            if (regions == default) regions = GenerateRegions(sourceCopy, blockConfiguration);
                         }
 
                         var foundCards = new List<CardModel>();
 
-                        // split image into bitmaps of 608x608
-                        for (int x = 0; x < sourceCopy.Width; x += 608)
+                        // split image into regional bitmaps
+                        foreach (var region in regions)
                         {
-                            for (int y = 0; y < sourceCopy.Height; y += 608)
-                            {
-                                var currentRegionBmp = new Bitmap(608, 608);
-                                var currentRegionBmpGraphics = Graphics.FromImage(currentRegionBmp);
+                            var currentRegionBmp = new Bitmap(blockConfiguration.BlockSize.Width, blockConfiguration.BlockSize.Height);
+                            var currentRegionBmpGraphics = Graphics.FromImage(currentRegionBmp);
 
-                                var LookBounds = new Rectangle(x, y, 608, 608);
-                                currentRegionBmpGraphics.DrawImage(sourceCopy, new Rectangle(0, 0, 608, 608), LookBounds, GraphicsUnit.Pixel);
+                            currentRegionBmpGraphics.DrawImage(sourceCopy, new Rectangle(0, 0, region.Width, region.Height), region, GraphicsUnit.Pixel);
 
-                                foundCards.AddRange(detector.GetCards((Bitmap)currentRegionBmp, LookBounds, 0));
-                                currentRegionBmpGraphics.Dispose();
-                            }
+                            foundCards.AddRange(detector.GetCards((Bitmap)currentRegionBmp, region, 0));
+                            currentRegionBmpGraphics.Dispose();
                         }
 
                         lock (mutex)
@@ -96,9 +92,7 @@ namespace SolitaireSolver
                         foreach (var region in regions)
                         {
                             regionIndex++;
-
-                            e.BackBufferGraphics.DrawRectangle(blackPen, region);
-                            
+                            e.BackBufferGraphics.DrawRectangle(blackPen, region); 
                         }
                     }
 
@@ -164,14 +158,14 @@ namespace SolitaireSolver
             return yoloWrapper;
         }
 
-        Rectangle[] GenerateRegions(Image source)
+        Rectangle[] GenerateRegions(Image source, BlockConfiguration blockConfiguration)
         {
             List<Rectangle> regions = new List<Rectangle>();
-            for (int x = 0; x < source.Width; x += 608)
+            for (int x = 0; x < source.Width; x += blockConfiguration.BlockSize.Width)
             {
-                for (int y = 0; y < source.Height; y +=608)
+                for (int y = 0; y < source.Height; y += blockConfiguration.BlockSize.Height)
                 {
-                    regions.Add(new Rectangle(x, y, 608, 608));
+                    regions.Add(new Rectangle(x, y, blockConfiguration.BlockSize.Width, blockConfiguration.BlockSize.Height));
                 }
             }
             return regions.ToArray();

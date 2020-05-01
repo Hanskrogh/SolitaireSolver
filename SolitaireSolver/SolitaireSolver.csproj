@@ -87,6 +87,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BlockConfiguration.cs" />
     <Compile Include="DrawEventArgs.cs" />
     <Compile Include="FrmSolitaire.cs">
       <SubType>Form</SubType>

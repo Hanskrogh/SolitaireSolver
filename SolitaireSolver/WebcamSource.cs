@@ -26,9 +26,12 @@ namespace SolitaireSolver
         Bitmap image;
         private Thread camera;
         private bool isCameraRunning = false;
-        
-        public WebcamSource(GraphicBuffer UpdateBuffer)
+
+        readonly BlockConfiguration BlockConfig;
+
+        public WebcamSource(GraphicBuffer UpdateBuffer, BlockConfiguration BlockConfig)
         {
+            this.BlockConfig = BlockConfig;
             this.UpdateBuffer = UpdateBuffer;
         }
 
@@ -52,9 +55,10 @@ namespace SolitaireSolver
             }
             frame = new Mat();
             capture = new VideoCapture(0);
-            capture.Open(0);
-            capture.FrameWidth = 1920;
-            capture.FrameHeight = 1080;
+            capture.Open(CaptureDevice.DShow, 0);
+            capture.Set(CaptureProperty.FrameWidth, 1920);
+            capture.Set(CaptureProperty.FrameHeight, 1080);
+
             
             if (capture.IsOpened())
             {
@@ -74,19 +78,19 @@ namespace SolitaireSolver
                         var rndName = rnd.Next(0, int.MaxValue);
 
                         int blockIndex = 0;
-                        for (int x = 0; x < image.Width; x += 608)
+                        for (int x = 0; x < image.Width; x += BlockConfig.BlockSize.Width)
                         {
-                            for (int y = 0; y < image.Height; y+= 608)
+                            for (int y = 0; y < image.Height; y+= BlockConfig.BlockSize.Height)
                             {
                                 blockIndex++;
 
                                 if (image.Width > 300)
                                 {
-                                    using (Bitmap blockRegion = new Bitmap(608, 608))
+                                    using (Bitmap blockRegion = new Bitmap(BlockConfig.BlockSize.Width, BlockConfig.BlockSize.Height))
                                     {
                                         using (Graphics blockGraphics = Graphics.FromImage(blockRegion))
                                         {
-                                            blockGraphics.DrawImage(image, new Rectangle(0, 0, 608, 608), new Rectangle(x, y, 608, 608), GraphicsUnit.Pixel);
+                                            blockGraphics.DrawImage(image, new Rectangle(0, 0, BlockConfig.BlockSize.Width, BlockConfig.BlockSize.Height), new Rectangle(x, y, BlockConfig.BlockSize.Width, BlockConfig.BlockSize.Height), GraphicsUnit.Pixel);
 
                                             var name = $"solitaire_{rndName}_{x}_{y}.png";
                                             blockRegion.Save($"imgs/{name}", ImageFormat.Png);
