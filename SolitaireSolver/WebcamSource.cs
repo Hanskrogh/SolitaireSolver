@@ -17,6 +17,8 @@ namespace SolitaireSolver
     public class WebcamSource : IDisposable
     {
         public readonly GraphicBuffer UpdateBuffer;
+        private readonly TimeSpan InitCameraDelay = TimeSpan.FromSeconds(3);
+
 
         [DllImport("user32.dll")]
         public static extern short GetAsyncKeyState(int vKey);
@@ -55,13 +57,20 @@ namespace SolitaireSolver
             }
             frame = new Mat();
             capture = new VideoCapture(0);
-            capture.Open(CaptureDevice.DShow, 0);
             capture.Set(CaptureProperty.FrameWidth, 1920);
             capture.Set(CaptureProperty.FrameHeight, 1080);
 
-            
+            Thread.Sleep(InitCameraDelay);
+            capture.Open(CaptureDevice.DShow, 0);
+            Thread.Sleep(InitCameraDelay);
+
+            capture.Set(CaptureProperty.FrameWidth, 1920);
+            capture.Set(CaptureProperty.FrameHeight, 1080);
+
+
             if (capture.IsOpened())
             {
+
                 while (isCameraRunning)
                 {
                     capture.Read(frame);
@@ -84,7 +93,7 @@ namespace SolitaireSolver
                             {
                                 blockIndex++;
 
-                                if (image.Width > 300)
+                                if (blockIndex == 3)
                                 {
                                     using (Bitmap blockRegion = new Bitmap(BlockConfig.BlockSize.Width, BlockConfig.BlockSize.Height))
                                     {

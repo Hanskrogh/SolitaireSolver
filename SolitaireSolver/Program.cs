@@ -13,7 +13,7 @@ namespace SolitaireSolver
         [STAThread]
         static void Main()
         {
-            BlockConfiguration CameraBlockConfiguration = new BlockConfiguration(new Size(1920, 1080));
+            BlockConfiguration CameraBlockConfiguration = new BlockConfiguration(new Size(608, 608));
 
             Application.EnableVisualStyles();
             Application.SetCompatibleTextRenderingDefault(false);

@@ -92,7 +92,10 @@ namespace SolitaireSolver
                         foreach (var region in regions)
                         {
                             regionIndex++;
-                            e.BackBufferGraphics.DrawRectangle(blackPen, region); 
+                            if (regionIndex == 3)
+                                e.BackBufferGraphics.DrawRectangle(blackPen, region);
+                            else
+                                e.BackBufferGraphics.FillRectangle(blackBrush, region);
                         }
                     }
 
@@ -132,8 +135,12 @@ namespace SolitaireSolver
 
         YoloWrapper InitializeYoloWrapper()
         {
-            YoloWrapper yoloWrapper = new YoloWrapper($"trainfiles/solitaire_images.cfg", $"trainfiles/solitaire_images.weights", $"trainfiles/solitaire_images.names");
+            YoloWrapper yoloWrapper = new YoloWrapper(
+                $"trainfiles/solitaire_images.cfg", 
+                $"trainfiles/solitaire_images.weights", 
+                $"trainfiles/solitaire_images.names");
 
+            /*
             if (yoloWrapper.EnvironmentReport.CudaExists == false)
             {
                 MessageBox.Show("Install CUDA 10");
@@ -154,6 +161,7 @@ namespace SolitaireSolver
                 MessageBox.Show("No GPU card detected. Exiting...");
                 return default;
             }
+            */
 
             return yoloWrapper;
         }
