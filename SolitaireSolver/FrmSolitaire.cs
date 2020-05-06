@@ -42,6 +42,8 @@ namespace SolitaireSolver
 
             Rectangle[] regions = default;
 
+            //Bitmap testBitmap = (Bitmap)Image.FromFile(@"C:\Users\hansk\Source\Repos\rasm586c\WinSolitaireTrain\WinSolitaireTrain\bin\Debug\darknet\data\img\solitaire_images65853.png");
+
             Thread detectionThread = new Thread(() => {
                 while (true)
                 {
@@ -68,6 +70,8 @@ namespace SolitaireSolver
                             currentRegionBmpGraphics.Dispose();
                         }
 
+                        //foundCards.AddRange(detector.GetCards(testBitmap, new Rectangle(0, 0, testBitmap.Width, testBitmap.Height), 0));
+
                         lock (mutex)
                         {
                             oldCardModels = foundCards.ToArray();
@@ -92,10 +96,10 @@ namespace SolitaireSolver
                         foreach (var region in regions)
                         {
                             regionIndex++;
-                            if (regionIndex == 3)
-                                e.BackBufferGraphics.DrawRectangle(blackPen, region);
-                            else
-                                e.BackBufferGraphics.FillRectangle(blackBrush, region);
+                            //if (regionIndex == 3)
+                            e.BackBufferGraphics.DrawRectangle(blackPen, region);
+                            //else
+                            //e.BackBufferGraphics.FillRectangle(blackBrush, region);
                         }
                     }
 
@@ -136,9 +140,10 @@ namespace SolitaireSolver
         YoloWrapper InitializeYoloWrapper()
         {
             YoloWrapper yoloWrapper = new YoloWrapper(
-                $"trainfiles/solitaire_images.cfg", 
-                $"trainfiles/solitaire_images.weights", 
-                $"trainfiles/solitaire_images.names");
+                $@"C:\Users\hansk\source\repos\SolitaireSolver\SolitaireSolver\bin\Debug\trainfiles\solitaire_images.cfg", 
+                $@"C:\Users\hansk\source\repos\SolitaireSolver\SolitaireSolver\bin\Debug\trainfiles\solitaire_images.weights", 
+                $@"C:\Users\hansk\source\repos\SolitaireSolver\SolitaireSolver\bin\Debug\trainfiles\solitaire_images.names");
+            yoloWrapper.
 
             /*
             if (yoloWrapper.EnvironmentReport.CudaExists == false)

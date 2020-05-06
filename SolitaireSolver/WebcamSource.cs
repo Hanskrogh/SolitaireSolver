@@ -62,14 +62,12 @@ namespace SolitaireSolver
 
             Thread.Sleep(InitCameraDelay);
             capture.Open(CaptureDevice.DShow, 0);
-            Thread.Sleep(InitCameraDelay);
-
-            capture.Set(CaptureProperty.FrameWidth, 1920);
-            capture.Set(CaptureProperty.FrameHeight, 1080);
-
+            while (!capture.IsOpened()) { }
 
             if (capture.IsOpened())
             {
+                capture.Set(CaptureProperty.FrameWidth, 1920);
+                capture.Set(CaptureProperty.FrameHeight, 1080);
 
                 while (isCameraRunning)
                 {
