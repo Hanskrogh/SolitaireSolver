@@ -1,5 +1,6 @@
 ﻿using AForge.Video.DirectShow;
 using Alturos.Yolo;
+using ComputerVision;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -22,10 +23,13 @@ namespace SolitaireSolver
         public FrmSolitaire(BlockConfiguration blockConfiguration)
         {
             InitializeComponent();
+
+            var gui = new FrmSolitaireGUI();
+            gui.Show();
             
             var yoloWrapper = InitializeYoloWrapper();
             if (yoloWrapper == default) return;//error case.
-            var detector = new ImageDetector(yoloWrapper);
+            var detector = new YoloDetector(yoloWrapper);
 
             gBuffer = new GraphicBuffer(pnlGraphics);
             WebcamSource source = new WebcamSource(gBuffer, blockConfiguration);
@@ -37,16 +41,16 @@ namespace SolitaireSolver
             Pen redPen = new Pen( redBrush, 2 );
             Pen blackPen = new Pen(blackBrush, 2);
 
-            CardModel[] oldCardModels = default;
+            CvModel[] oldCardModels = default;
             Image lastSource = default;
 
             Rectangle[] regions = default;
 
-            //Bitmap testBitmap = (Bitmap)Image.FromFile(@"C:\Users\hansk\Source\Repos\rasm586c\WinSolitaireTrain\WinSolitaireTrain\bin\Debug\darknet\data\img\solitaire_images65853.png");
-
             Thread detectionThread = new Thread(() => {
                 while (true)
                 {
+                    Thread.Sleep(200);
+
                     if (lastSource != default)
                     {
                         Image sourceCopy = null;
@@ -56,7 +60,7 @@ namespace SolitaireSolver
                             if (regions == default) regions = GenerateRegions(sourceCopy, blockConfiguration);
                         }
 
-                        var foundCards = new List<CardModel>();
+                        var foundCards = new List<CvModel>();
 
                         // split image into regional bitmaps
                         foreach (var region in regions)
@@ -66,11 +70,9 @@ namespace SolitaireSolver
 
                             currentRegionBmpGraphics.DrawImage(sourceCopy, new Rectangle(0, 0, region.Width, region.Height), region, GraphicsUnit.Pixel);
 
-                            foundCards.AddRange(detector.GetCards((Bitmap)currentRegionBmp, region, 0));
+                            foundCards.AddRange(detector.DetectObjects((Bitmap)currentRegionBmp, region));
                             currentRegionBmpGraphics.Dispose();
                         }
-
-                        //foundCards.AddRange(detector.GetCards(testBitmap, new Rectangle(0, 0, testBitmap.Width, testBitmap.Height), 0));
 
                         lock (mutex)
                         {
@@ -82,8 +84,6 @@ namespace SolitaireSolver
             });
             detectionThread.Start();
 
-
-            
             gBuffer.OnDraw += e => 
             {
                 lock (mutex)
@@ -96,10 +96,7 @@ namespace SolitaireSolver
                         foreach (var region in regions)
                         {
                             regionIndex++;
-                            //if (regionIndex == 3)
                             e.BackBufferGraphics.DrawRectangle(blackPen, region);
-                            //else
-                            //e.BackBufferGraphics.FillRectangle(blackBrush, region);
                         }
                     }
 
@@ -107,7 +104,7 @@ namespace SolitaireSolver
                     {
                         foreach (var card in oldCardModels)
                         {
-                            var bounds = new Rectangle(card.Bounds.X + card.Look_Bounds.X, card.Bounds.Y + card.Look_Bounds.Y, card.Bounds.Width, card.Bounds.Height);
+                            var bounds = new Rectangle(card.BoundingBox.X + card.Look_Bounds.X, card.BoundingBox.Y + card.Look_Bounds.Y, card.BoundingBox.Width, card.BoundingBox.Height);
 
                             e.BackBufferGraphics.DrawRectangle(redPen, bounds);
 
@@ -126,8 +123,6 @@ namespace SolitaireSolver
                 e.BackBufferGraphics.DrawString($"FPS: {gBuffer.fps}", this.Font, whiteBrush, new Point(4, 4)); 
             };
             
-
-            
             source.Start();
             FormClosing += (s, e) =>
             {
@@ -140,10 +135,11 @@ namespace SolitaireSolver
         YoloWrapper InitializeYoloWrapper()
         {
             YoloWrapper yoloWrapper = new YoloWrapper(
-                $@"C:\Users\hansk\source\repos\SolitaireSolver\SolitaireSolver\bin\Debug\trainfiles\solitaire_images.cfg", 
-                $@"C:\Users\hansk\source\repos\SolitaireSolver\SolitaireSolver\bin\Debug\trainfiles\solitaire_images.weights", 
-                $@"C:\Users\hansk\source\repos\SolitaireSolver\SolitaireSolver\bin\Debug\trainfiles\solitaire_images.names");
-            yoloWrapper.
+                $@"C:\Users\hansk\source\repos\rasm586c\WinSolitaireTrain\WinSolitaireTrain\bin\Debug\darknet\solitaire_images.cfg", 
+                $@"C:\Users\hansk\source\repos\rasm586c\WinSolitaireTrain\WinSolitaireTrain\bin\Debug\darknet\data\backup\solitaire_images_40000.weights", 
+                $@"C:\Users\hansk\source\repos\rasm586c\WinSolitaireTrain\WinSolitaireTrain\bin\Debug\darknet\data\solitaire_images.names",
+                new GpuConfig() { GpuIndex = 0 });
+            
 
             /*
             if (yoloWrapper.EnvironmentReport.CudaExists == false)
@@ -170,7 +166,6 @@ namespace SolitaireSolver
 
             return yoloWrapper;
         }
-
         Rectangle[] GenerateRegions(Image source, BlockConfiguration blockConfiguration)
         {
             List<Rectangle> regions = new List<Rectangle>();

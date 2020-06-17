@@ -96,9 +96,13 @@
     <Compile Include="FrmSolitaire.Designer.cs">
       <DependentUpon>FrmSolitaire.cs</DependentUpon>
     </Compile>
+    <Compile Include="FrmSolitaireGUI.cs">
+      <SubType>Form</SubType>
+    </Compile>
+    <Compile Include="FrmSolitaireGUI.Designer.cs">
+      <DependentUpon>FrmSolitaireGUI.cs</DependentUpon>
+    </Compile>
     <Compile Include="GraphicBuffer.cs" />
-    <Compile Include="ImageDetector.cs" />
-    <Compile Include="CardModel.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="WebcamSource.cs" />
   </ItemGroup>
@@ -106,6 +110,16 @@
     <EmbeddedResource Include="FrmSolitaire.resx">
       <DependentUpon>FrmSolitaire.cs</DependentUpon>
     </EmbeddedResource>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\CDIOLibraries\CDIOComputerVision\CDIOComputerVision.csproj">
+      <Project>{9d08f44c-f730-4d52-a1fe-b9c7669c4932}</Project>
+      <Name>CDIOComputerVision</Name>
+    </ProjectReference>
+    <ProjectReference Include="..\..\CDIOLibraries\CDIODeck\CDIODeck.csproj">
+      <Project>{58846bdf-778c-4858-b54a-c3a794de93d4}</Project>
+      <Name>CDIODeck</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">
