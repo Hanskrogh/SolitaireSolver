@@ -1,9 +1,13 @@
-﻿using System;
+﻿using ComputerVision;
+using Deck;
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Data;
 using System.Drawing;
 using System.Linq;
+using System.Net;
+using System.Runtime.InteropServices.WindowsRuntime;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -19,12 +23,22 @@ namespace SolitaireSolver
         Size originalSize;
         Size cardSize = new Size(65, 100);
 
+        //private Deck.SolitaireSolver Solver = new Deck.SolitaireSolver();
+        private StateController StateController = new StateController();
+        private SolitaireLogicComponent Logic;
+        
         readonly object mutex = new object();
+        public readonly BoardController BoardController;
 
-        public FrmSolitaireGUI()
+        private Dictionary<CardType, Bitmap> CardImages = new  Dictionary<CardType, Bitmap>();
+
+        public FrmSolitaireGUI(FrmSolitaire Invoker)
         {
             InitializeComponent();
+            LoadCards();
 
+            BoardController = new BoardController();
+            Logic = new SolitaireLogicComponent(StateController, BoardController);            
             originalSize = this.Size;
 
             ResizeBuffer(this.Width, this.Height);
@@ -37,8 +51,32 @@ namespace SolitaireSolver
                     Draw();
                 }
             }).Start();
-        }
 
+            Invoker.OnScanComplete += Invoker_OnScanComplete;
+            
+        }
+        
+        private void LoadCards()
+        {
+            foreach(var CardType in Enum.GetValues(typeof(CardType)))
+            {
+                CardType currentType = (CardType)CardType;
+
+                if (currentType == Deck.CardType.Covered)
+                    continue;
+
+                var Name = currentType
+                    .ToString()
+                    .Split('_')
+                    .Last();
+
+                CardImages[currentType] = (Bitmap)Image.FromFile($@"Data\{Name}.png");
+            }
+        }
+        private void Invoker_OnScanComplete(CvModel[] Observations)
+        {
+            BoardController.UpdateBoardWithObservations(Observations);
+        }
 
         public void Draw()
         {
@@ -46,8 +84,36 @@ namespace SolitaireSolver
             {
                 backBufferGraphics.Clear(Color.Green);
 
-                DrawDeck();
-                DrawColorStacks();
+                var boardState = BoardController.GetBoard();
+
+                if (StateController.Initialized)
+                {
+                    if (StateController.DeckCard != null && StateController.DeckCard.Type != default)
+                        DrawDeck(StateController.DeckCard.Type);
+                    else
+                        DrawDeck();
+                }
+                else
+                {
+                    if (boardState.DeckCard != default)
+                        DrawDeck(boardState.DeckCard.Type);
+                    else
+                        DrawDeck();
+
+                }
+
+
+                if (StateController.Initialized)
+                {
+                    DrawColorStacks(StateController.Top);
+                    DrawStack(StateController.Bottom);
+                } else
+                {
+                    DrawColorStacks(boardState.Top);
+                    DrawStack(boardState.Bottom);
+                }
+
+                DrawNextMove();
 
                 graphics.DrawImage(backBuffer, new Point(0, 0));                
             }
@@ -82,6 +148,14 @@ namespace SolitaireSolver
             }
         }
     
+        private void DrawDeck(CardType Type)
+        {
+            var relativeCardSize = calculateRelativeSize(originalSize, cardSize, this.Size);
+            var relativeCardPoint = calculateRelativePoint(originalSize, new Point(5, 5), this.Size);
+
+            backBufferGraphics.DrawImage(CardImages[Type], new Rectangle(relativeCardPoint, relativeCardSize));
+        }
+
         private void DrawDeck()
         {
             var relativeCardSize = calculateRelativeSize(originalSize, cardSize, this.Size);
@@ -93,25 +167,136 @@ namespace SolitaireSolver
             backBufferGraphics.FillRectangle(new SolidBrush(Color.White), new Rectangle(relativeCardPoint, relativeCardSize));
         }
 
-        private void DrawColorStacks()
+
+        private void DrawColorStacks(CardModel[] Cards)
         {
             for (int i = 0; i < 4; i++)
             {
-                var cardPoint = new Point(450 + i*(cardSize.Width+15), 5);
+                var cardPoint = new Point(450 + i * (cardSize.Width + 15), 5);
 
                 var relativeCardSize = calculateRelativeSize(originalSize, new Size(65, 100), this.Size);
                 var relativeCardPoint = calculateRelativePoint(originalSize, cardPoint, this.Size);
 
-                backBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Black)), new Rectangle(
-                    new Point(relativeCardPoint.X - 1, relativeCardPoint.Y - 1),
-                    new Size(relativeCardSize.Width + 1, relativeCardSize.Height + 1)));
-                
-                backBufferGraphics.FillRectangle(
-                    new SolidBrush(Color.White), 
-                    new Rectangle(relativeCardPoint, relativeCardSize));
-                
-                
+                if (Cards != default && Cards[i] != default)
+                {
+                    backBufferGraphics.DrawImage(
+                       CardImages[Cards[i].Type],
+                       new Rectangle(relativeCardPoint, relativeCardSize));
+                }
+                else
+                {
+                    backBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Black)), new Rectangle(
+                        new Point(relativeCardPoint.X - 1, relativeCardPoint.Y - 1),
+                        new Size(relativeCardSize.Width + 1, relativeCardSize.Height + 1)));
+
+                    backBufferGraphics.FillRectangle(
+                        new SolidBrush(Color.White),
+                        new Rectangle(relativeCardPoint, relativeCardSize));
+                }
             }
+        }
+
+        private void DrawStack(CardModel[] Cards)
+        {
+            for (int i = 0; i < 7; i++)
+            {
+                var cardPoint = new Point(210 + i * (cardSize.Width + 15), 150);
+
+                var relativeCardSize = calculateRelativeSize(originalSize, new Size(65, 100), this.Size);
+                var relativeCardPoint = calculateRelativePoint(originalSize, cardPoint, this.Size);
+
+                if (Cards != default && Cards[i] != default)
+                {
+                    backBufferGraphics.DrawImage(
+                       CardImages[Cards[i].Type],
+                       new Rectangle(relativeCardPoint, relativeCardSize));
+                }
+                else
+                {
+                    backBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Black)), new Rectangle(
+                        new Point(relativeCardPoint.X - 1, relativeCardPoint.Y - 1),
+                        new Size(relativeCardSize.Width + 1, relativeCardSize.Height + 1)));
+
+                    backBufferGraphics.FillRectangle(
+                        new SolidBrush(Color.White),
+                        new Rectangle(relativeCardPoint, relativeCardSize));
+                }
+            }
+        }
+
+        private void DrawColorStacks(List<CardModel>[] Cards)
+        {
+            for (int i = 0; i < 4; i++)
+            {
+                var cardPoint = new Point(450 + i * (cardSize.Width + 15), 5);
+
+                var relativeCardSize = calculateRelativeSize(originalSize, new Size(65, 100), this.Size);
+                var relativeCardPoint = calculateRelativePoint(originalSize, cardPoint, this.Size);
+
+                if (Cards.Count() > 0 && Cards[i].Count > 0)
+                {
+                    backBufferGraphics.DrawImage(
+                       CardImages[Cards[i].Last().Type],
+                       new Rectangle(relativeCardPoint, relativeCardSize));
+                }
+                else
+                {
+                    backBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Black)), new Rectangle(
+                        new Point(relativeCardPoint.X - 1, relativeCardPoint.Y - 1),
+                        new Size(relativeCardSize.Width + 1, relativeCardSize.Height + 1)));
+
+                    backBufferGraphics.FillRectangle(
+                        new SolidBrush(Color.White),
+                        new Rectangle(relativeCardPoint, relativeCardSize));
+                }
+            }
+        }
+    
+        private void DrawStack(List<CardModel>[] Cards) {
+            for (int i = 0; i < 7; i++)
+            {
+                var cardPoint = new Point(210 + i * (cardSize.Width + 15), 150);
+
+                var relativeCardSize = calculateRelativeSize(originalSize, new Size(65, 100), this.Size);
+                var relativeCardPoint = calculateRelativePoint(originalSize, cardPoint, this.Size);
+
+                if (Cards.Count() > 0 && Cards[i].Count > 0 && Cards[i].Last() != null && Cards[i].Last().Uncovered)
+                {
+                    backBufferGraphics.DrawImage(
+                       CardImages[Cards[i].Last().Type],
+                       new Rectangle(relativeCardPoint, relativeCardSize));
+                }
+                else
+                {
+                    backBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Black)), new Rectangle(
+                        new Point(relativeCardPoint.X - 1, relativeCardPoint.Y - 1),
+                        new Size(relativeCardSize.Width + 1, relativeCardSize.Height + 1)));
+
+                    backBufferGraphics.FillRectangle(
+                        new SolidBrush(Color.White),
+                        new Rectangle(relativeCardPoint, relativeCardSize));
+                }
+            }
+        }
+    
+        private void DrawNextMove()
+        {
+            backBufferGraphics.DrawString($"Next Move: {Logic.GetNextMove()}", this.Font, new SolidBrush(Color.Black), new Point(5, 300));
+        }
+
+        private void btnNextMove_Click(object sender, EventArgs e)
+        {
+            if (!StateController.Initialized)
+            {
+                btnNextMove.Text = "Get Next Move";
+                StateController.InitializeBoard(BoardController.GetBoard());
+                StateController.Initialized = true;
+            } else
+            {
+                StateController.UpdateBoardState(BoardController.GetBoard());
+            }
+
+            
         }
     }
 }

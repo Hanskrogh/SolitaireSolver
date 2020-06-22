@@ -1,6 +1,7 @@
 ﻿using AForge.Video.DirectShow;
 using Alturos.Yolo;
 using ComputerVision;
+using Deck;
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
@@ -20,11 +21,14 @@ namespace SolitaireSolver
         GraphicBuffer gBuffer;
         readonly object mutex = new object();
 
+        public delegate void ScanComplete(CvModel[] Observations);
+        public event ScanComplete OnScanComplete;
+
         public FrmSolitaire(BlockConfiguration blockConfiguration)
         {
             InitializeComponent();
 
-            var gui = new FrmSolitaireGUI();
+            var gui = new FrmSolitaireGUI(this);
             gui.Show();
             
             var yoloWrapper = InitializeYoloWrapper();
@@ -49,7 +53,7 @@ namespace SolitaireSolver
             Thread detectionThread = new Thread(() => {
                 while (true)
                 {
-                    Thread.Sleep(200);
+                    //Thread.Sleep(200);
 
                     if (lastSource != default)
                     {
@@ -77,6 +81,7 @@ namespace SolitaireSolver
                         lock (mutex)
                         {
                             oldCardModels = foundCards.ToArray();
+                            OnScanComplete?.Invoke(oldCardModels);
                         }
                         sourceCopy.Dispose();
                     }
@@ -117,6 +122,15 @@ namespace SolitaireSolver
                             e.BackBufferGraphics.DrawString($"{card.Type}: {(int)confidence}%", this.Font, greenBrush, new Point(offset.X + bounds.X, offset.Y + bounds.Y));
                         }
                     }
+
+                    var obs = gui.BoardController.Transformed;
+                    if (obs != default)
+                    {
+                        foreach (var  _obs in obs)
+                            e.BackBufferGraphics.FillRectangle(new SolidBrush(Color.Yellow), new Rectangle(_obs.MinWorldPoint.X, _obs.MinWorldPoint.Y, 5, 5));
+                    }
+
+
                 }
 
                 e.BackBufferGraphics.DrawString($"FPS: {gBuffer.fps}", this.Font, blackBrush, new Point(5, 5));
