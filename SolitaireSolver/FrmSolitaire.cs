@@ -24,8 +24,17 @@ namespace SolitaireSolver
         public delegate void ScanComplete(CvModel[] Observations);
         public event ScanComplete OnScanComplete;
 
+        private Font obsFont;
+
         public FrmSolitaire(BlockConfiguration blockConfiguration)
         {
+            FontFamily fontFamily = new FontFamily("Arial");
+            obsFont = new Font(
+               fontFamily,
+               25,
+               FontStyle.Regular,
+               GraphicsUnit.Pixel);
+
             InitializeComponent();
 
             var gui = new FrmSolitaireGUI(this);
@@ -111,23 +120,39 @@ namespace SolitaireSolver
                         {
                             var bounds = new Rectangle(card.BoundingBox.X + card.Look_Bounds.X, card.BoundingBox.Y + card.Look_Bounds.Y, card.BoundingBox.Width, card.BoundingBox.Height);
 
-                            e.BackBufferGraphics.DrawRectangle(redPen, bounds);
+                            //e.BackBufferGraphics.DrawRectangle(redPen, bounds);
 
                             var offset = new Point(0, -25);
                             var confidence = card.Confidence;
                             confidence *= 100;
                             
 
-                            e.BackBufferGraphics.DrawString($"{card.Type}: {(int)confidence}%", this.Font, blackBrush, new Point(offset.X + bounds.X + 1, offset.Y + bounds.Y + 1));
-                            e.BackBufferGraphics.DrawString($"{card.Type}: {(int)confidence}%", this.Font, greenBrush, new Point(offset.X + bounds.X, offset.Y + bounds.Y));
+                            //e.BackBufferGraphics.DrawString($"{card.Type}: {(int)confidence}%", this.Font, blackBrush, new Point(offset.X + bounds.X + 1, offset.Y + bounds.Y + 1));
+                            //e.BackBufferGraphics.DrawString($"{card.Type}: {(int)confidence}%", this.Font, greenBrush, new Point(offset.X + bounds.X, offset.Y + bounds.Y));
                         }
                     }
 
-                    var obs = gui.BoardController.Transformed;
-                    if (obs != default)
+                    var GreenLowAlpha = Color.FromArgb(100, Color.Green);
+
+                    var TransformedObservations = gui.BoardController.Transformed;
+                    if (TransformedObservations != default)
                     {
-                        foreach (var  _obs in obs)
-                            e.BackBufferGraphics.FillRectangle(new SolidBrush(Color.Yellow), new Rectangle(_obs.MinWorldPoint.X, _obs.MinWorldPoint.Y, 5, 5));
+                        foreach (var  TransformedObservation in TransformedObservations)
+                        {
+                               
+
+                            var StartPoint = TransformedObservation.MinWorldPoint;
+                            var Size = new Size(TransformedObservation.MaxWorldPoint.X - TransformedObservation.MinWorldPoint.X, TransformedObservation.MaxWorldPoint.Y - TransformedObservation.MinWorldPoint.Y);
+                            var Center = new Point(
+                                StartPoint.X + (TransformedObservation.MaxWorldPoint.X - TransformedObservation.MinWorldPoint.X) / 2 - 50,
+                                StartPoint.Y + (TransformedObservation.MaxWorldPoint.Y - TransformedObservation.MinWorldPoint.Y) / 2 - 15);
+
+                            
+                            e.BackBufferGraphics.FillRectangle(new SolidBrush(GreenLowAlpha), new Rectangle(StartPoint, Size));
+                            e.BackBufferGraphics.DrawString($"{GetCardName(TransformedObservation.Type)}: {(int)(TransformedObservation.Confidence*100)} %", obsFont, blackBrush, Center);
+                            e.BackBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Yellow)), new Rectangle(StartPoint, Size));
+                        }
+                        //e.BackBufferGraphics.FillRectangle(new SolidBrush(Color.Yellow), new Rectangle(_obs.MinWorldPoint.X, _obs.MinWorldPoint.Y, 5, 5));
                     }
 
 
@@ -145,6 +170,14 @@ namespace SolitaireSolver
             };
         }
 
+
+        private string GetCardName(CardType Type)
+        {
+            var Name = Type.ToString();
+            if (Name.StartsWith("_"))
+                Name = Name.Replace("_", string.Empty);
+            return Name;
+        }
 
         YoloWrapper InitializeYoloWrapper()
         {

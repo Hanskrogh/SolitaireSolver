@@ -48,7 +48,7 @@
             this.ClientSize = new System.Drawing.Size(958, 606);
             this.Controls.Add(this.pnlGraphics);
             this.Name = "FrmSolitaire";
-            this.Text = "FrmSolitaire";
+            this.Text = "Camera";
             this.ResumeLayout(false);
 
         }

@@ -21,7 +21,7 @@ namespace SolitaireSolver
         Graphics backBufferGraphics;
         Bitmap backBuffer;
         Size originalSize;
-        Size cardSize = new Size(65, 100);
+        Size cardSize = new Size((int)(65.0 / 1.15d), (int)(100.0 / 1.15d)); //new Size(65, 100);
 
         //private Deck.SolitaireSolver Solver = new Deck.SolitaireSolver();
         private StateController StateController = new StateController();
@@ -31,6 +31,7 @@ namespace SolitaireSolver
         public readonly BoardController BoardController;
 
         private Dictionary<CardType, Bitmap> CardImages = new  Dictionary<CardType, Bitmap>();
+        private Bitmap BacksideCard;
 
         public FrmSolitaireGUI(FrmSolitaire Invoker)
         {
@@ -72,6 +73,8 @@ namespace SolitaireSolver
 
                 CardImages[currentType] = (Bitmap)Image.FromFile($@"Data\{Name}.png");
             }
+
+            BacksideCard = (Bitmap)Image.FromFile(@"Data\Backside.png");
         }
         private void Invoker_OnScanComplete(CvModel[] Observations)
         {
@@ -121,17 +124,36 @@ namespace SolitaireSolver
 
         private Size calculateRelativeSize(Size original, Size wantedSize, Size newSize)
         {
+            //newSize = new Size(816, 489);
+
+            var aspectRatio = (double)wantedSize.Height / wantedSize.Width;
+            var calculatedWidth = (wantedSize.Width / (double)original.Width) * newSize.Width;
+
             return new Size(
-                (int)((wantedSize.Width / (double)original.Width) * newSize.Width),
-                (int)((wantedSize.Height / (double)original.Height) * newSize.Height)
-            );
+                (int)calculatedWidth,
+                (int)(calculatedWidth * aspectRatio)
+
+                //(int)((wantedSize.Height / (double)original.Height) * newSize.Height)
+            ); 
         }
         private Point calculateRelativePoint(Size original, Point wantedPoint, Size newSize)
         {
+            //newSize = new Size(816, 489);
+
+            var aspectRatio = (double)wantedPoint.Y / wantedPoint.X;
+            var calculatedX = (wantedPoint.X / (double)original.Width) * newSize.Width;
+
+            /*
             return new Point(
-               (int)((wantedPoint.X / (double)original.Width) * newSize.Width),
+               (int)calculatedX,
+               (int)(calculatedX * aspectRatio)
                (int)((wantedPoint.Y / (double)original.Height) * newSize.Height)
            );
+            */
+            return new Point(
+                (int)calculatedX,
+                (int)(calculatedX * aspectRatio)
+            );
         }
 
         private void ResizeBuffer(int width, int height)
@@ -174,7 +196,7 @@ namespace SolitaireSolver
             {
                 var cardPoint = new Point(450 + i * (cardSize.Width + 15), 5);
 
-                var relativeCardSize = calculateRelativeSize(originalSize, new Size(65, 100), this.Size);
+                var relativeCardSize = calculateRelativeSize(originalSize, cardSize, this.Size);
                 var relativeCardPoint = calculateRelativePoint(originalSize, cardPoint, this.Size);
 
                 if (Cards != default && Cards[i] != default)
@@ -200,9 +222,9 @@ namespace SolitaireSolver
         {
             for (int i = 0; i < 7; i++)
             {
-                var cardPoint = new Point(210 + i * (cardSize.Width + 15), 150);
+                var cardPoint = new Point(237 + i * (cardSize.Width + 15), 150);
 
-                var relativeCardSize = calculateRelativeSize(originalSize, new Size(65, 100), this.Size);
+                var relativeCardSize = calculateRelativeSize(originalSize, cardSize, this.Size);
                 var relativeCardPoint = calculateRelativePoint(originalSize, cardPoint, this.Size);
 
                 if (Cards != default && Cards[i] != default)
@@ -213,6 +235,9 @@ namespace SolitaireSolver
                 }
                 else
                 {
+                    if (Logic.AwaitingCard() && Logic.AwaitingCardIndex() == i)
+                        continue;
+
                     backBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Black)), new Rectangle(
                         new Point(relativeCardPoint.X - 1, relativeCardPoint.Y - 1),
                         new Size(relativeCardSize.Width + 1, relativeCardSize.Height + 1)));
@@ -230,7 +255,7 @@ namespace SolitaireSolver
             {
                 var cardPoint = new Point(450 + i * (cardSize.Width + 15), 5);
 
-                var relativeCardSize = calculateRelativeSize(originalSize, new Size(65, 100), this.Size);
+                var relativeCardSize = calculateRelativeSize(originalSize, cardSize, this.Size);
                 var relativeCardPoint = calculateRelativePoint(originalSize, cardPoint, this.Size);
 
                 if (Cards.Count() > 0 && Cards[i].Count > 0)
@@ -253,21 +278,53 @@ namespace SolitaireSolver
         }
     
         private void DrawStack(List<CardModel>[] Cards) {
+            
             for (int i = 0; i < 7; i++)
             {
                 var cardPoint = new Point(210 + i * (cardSize.Width + 15), 150);
 
-                var relativeCardSize = calculateRelativeSize(originalSize, new Size(65, 100), this.Size);
+                var relativeCardSize = calculateRelativeSize(originalSize, cardSize, this.Size);
                 var relativeCardPoint = calculateRelativePoint(originalSize, cardPoint, this.Size);
 
-                if (Cards.Count() > 0 && Cards[i].Count > 0 && Cards[i].Last() != null && Cards[i].Last().Uncovered)
+                // Draw each card
+                for (int CardIndex = 0; CardIndex < Cards[i].Count; CardIndex++)
                 {
-                    backBufferGraphics.DrawImage(
-                       CardImages[Cards[i].Last().Type],
-                       new Rectangle(relativeCardPoint, relativeCardSize));
+                    var Card = Cards[i][CardIndex];
+
+                    if (Card != null)
+                    {
+                        var drawPoint = new Point(relativeCardPoint.X, relativeCardPoint.Y + 25 * CardIndex);
+
+                        if (Card.Uncovered)
+                        {
+                            backBufferGraphics.DrawImage(
+                               CardImages[Card.Type],
+                               new Rectangle(drawPoint, relativeCardSize));
+                        } else
+                        {
+                            backBufferGraphics.DrawImage(
+                               BacksideCard,
+                               new Rectangle(drawPoint, relativeCardSize));
+
+                            //backBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Black)),
+                            //     new Rectangle(drawPoint, relativeCardSize));
+                        }
+                    }
                 }
-                else
+
+               
+
+                // No uncovered card..
+                // TODO: Rewrite to a more sensible statement
+                if (!(Cards.Count() > 0 && Cards[i].Count > 0 && Cards[i].Last() != null && Cards[i].Last().Uncovered))
                 {
+                    if (Logic.AwaitingCard() && Logic.AwaitingCardIndex() == i)
+                    {
+                        backBufferGraphics.DrawString("Waiting for new card ... ",
+                            this.Font, new SolidBrush(Color.Black), calculateRelativePoint(originalSize, new Point(75, 5), this.Size));
+                        continue;
+                    }
+
                     backBufferGraphics.DrawRectangle(new Pen(new SolidBrush(Color.Black)), new Rectangle(
                         new Point(relativeCardPoint.X - 1, relativeCardPoint.Y - 1),
                         new Size(relativeCardSize.Width + 1, relativeCardSize.Height + 1)));
